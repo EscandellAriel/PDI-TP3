@@ -130,62 +130,57 @@ def dado_quieto(contornos_actual, contornos_anterior):
 #################################################
 ###Programa######################################
 
-
-# Ruta del video de entrada
-video_path = './tirada_3.mp4'
+# PROGRAMA
+video_path = 'bin/tirada_3.mp4'
 cap = cv2.VideoCapture(video_path)
 
-# Leer el primer frame para obtener dimensiones
 ret, frame = cap.read()
-f = 20
-k = 0
-lista_contornos = []
+f = 0
+contornos_anteriores = None
+intervalo_comparacion = 10  # Realizar la comparación cada 5 frames
+
 if not ret:
     print("No se pudo abrir el video.")
     exit()
-# Bucle para procesar cada cuadro
+
 while True:
     ret, frame = cap.read()
     if not ret:
         break
-# Aplicar función de procesamiento de color
+
     frame_procesado, frame_color = procesar_color(frame)
-
-# Detectar contornos cuadrados
     contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
+
     if len(contornos_cuadrados) == 5:
-        lista_contornos.append(contornos_cuadrados)
-        k+=1
-        if k-1==0:continue
-        if f%20==0:
-            contornos_siguiente = contornos_cuadrados
-            if(dado_quieto(contornos_cuadrados,lista_contornos[k-1])):
-            # Recortar regiones de interés de la imagen original
-                recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
+        if f % intervalo_comparacion == 0:  # Realizar la comparación cada 5 frames
+            if contornos_anteriores is not None:
+                area_actual = sum(cv2.contourArea(contorno) for contorno in contornos_cuadrados)
+                area_anterior = sum(cv2.contourArea(contorno) for contorno in contornos_anteriores)
 
-            # Mostrar el resultado
-                cv2.imshow('Frame Original', redimensionar(frame))
-                cv2.imshow('Frame Original', redimensionar(frame_color))
-                cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
+                if abs(area_actual - area_anterior) < 100:  # Ajusta este umbral según tu escenario
+                    recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
 
-            # Visualizar los recortes utilizando matplotlib
-                for i, recorte in enumerate(recortes):
-                    valor = contarDados(recorte)
-                    plt.subplot(1, len(recortes), i + 1)
-                    plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
-                    plt.title(f'Recorte {i + 1}\nPuntos: {valor} Frame {f-25}')
-                    
+                    cv2.imshow('Frame Original', redimensionar(frame))
+                    cv2.imshow('Frame Original', redimensionar(frame_color))
+                    cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
 
-                plt.show()
-    f+=1  
-        # Salir del bucle si se presiona 'q'
+                    for i, recorte in enumerate(recortes):
+                        valor = contarDados(recorte)
+                        plt.subplot(1, len(recortes), i + 1)
+                        plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
+                        plt.title(f'Recorte {i + 1}\nPuntos: {valor} Frame {f}')
+
+                    plt.show()
+
+            contornos_anteriores = contornos_cuadrados
+
+    f += 1
+
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
-# Liberar recursos
 cap.release()
 cv2.destroyAllWindows()
-
 
 
 
