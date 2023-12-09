@@ -68,31 +68,22 @@ def recortar_contornos(frame, contornos):
     return recortes
 
 def contarDados(recorte):
-    dado_recortado_u =  cv2.threshold(recorte, 168, 255, cv2.THRESH_BINARY_INV)[1]
-    dado_recortado_c = cv2.Canny(dado_recortado_u, 0, 255, apertureSize=3, L2gradient=True)
-    cv2.imshow('Frame thresh', dado_recortado_u)
-    #plt.imshow(dado_recortado_u)
-    #plt.show()
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
-    cv2.imshow('Frame canny', dado_recortado_c)
-    #dado_recortado_para_components = cv2.dilate(dado_recortado_c, kernel)
-    
+    _, umbral = cv2.threshold(recorte, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    dado_recortado_para_components = cv2.dilate(umbral, kernel)
+        # Aplicar erosión
+    imagen_erosionada = cv2.erode(umbral, kernel, iterations=1)
+    cv2.imshow('Frame erode', imagen_erosionada)
     # Encuentra componentes conectados
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(dado_recortado_c, 8)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(imagen_erosionada, 4)
 
     # Especifica el umbral de área
-    area_threshold = (1, 300)  # UMBRAL DE AREA
+    area_threshold = (20, 120)  # UMBRAL DE AREA
 
     # Filtra las componentes conectadas basadas en el umbral de área
     filtered_labels = []
     filtered_stats = []
     filtered_centroids = []
-
-    for label in range(1, num_labels):  # comienza desde 1 para excluir el fondo (etiqueta 0)
-        x, y, w, h, _ = stats[label]
-
-        # Dibujar el bounding box
-        cv2.rectangle(recorte, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
     # Mostrar la imagen con los puntos y bounding boxes
     cv2.imshow('Puntos y Bounding Boxes', recorte)
@@ -103,60 +94,153 @@ def contarDados(recorte):
         area = stats[label, cv2.CC_STAT_AREA]
 
         if area > area_threshold[0] and area < area_threshold[1]:
-            filtered_labels.append(label)
-            filtered_stats.append(stats[label])
-            filtered_centroids.append(centroids[label])
+            x, y, w, h, _ = stats[label]
+            relacion_aspecto = float(w) / h
+            if relacion_aspecto >=  0.8 and relacion_aspecto <= 1.2:
+                filtered_labels.append(label)
+                filtered_stats.append(stats[label])
+                filtered_centroids.append(centroids[label])
+            # Dibujar el bounding box
+                cv2.rectangle(recorte, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                #cv2.rectangle(umbral, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                #plt.imshow(umbral)
+                #plt.show()
+
     return len(filtered_centroids)
+
+
+
+
+# Función para determinar si un dado está quieto de un frame a otro
+def dado_quieto(contornos_actual, contornos_anterior):
+    # Convertir a escala de grises
+    for x,y in zip(contornos_actual,contornos_anterior):
+        if np.array_equal(x, y):continue
+        else: return False
+    return True
+    # Calcular la diferencia de área entre frames consecutivos
+    diferencia_area = abs(area_dado_actual - area_dado_anterior)
+
+    # Determinar si el dado está quieto (comparando la diferencia de área con el umbral)
+    esta_quieto = diferencia_area < umbral_movimiento
+
+
+
 
 #################################################
 ###Programa######################################
 
 
 # Ruta del video de entrada
-video_path = './tirada_2.mp4'
+video_path = './tirada_3.mp4'
 cap = cv2.VideoCapture(video_path)
 
 # Leer el primer frame para obtener dimensiones
 ret, frame = cap.read()
+f = 20
+k = 0
+lista_contornos = []
 if not ret:
     print("No se pudo abrir el video.")
     exit()
-i = 0
 # Bucle para procesar cada cuadro
 while True:
     ret, frame = cap.read()
     if not ret:
         break
-    if i == 70:
-    # Aplicar función de procesamiento de color
-        frame_procesado, frame_color = procesar_color(frame)
+# Aplicar función de procesamiento de color
+    frame_procesado, frame_color = procesar_color(frame)
 
-    # Detectar contornos cuadrados
-        contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
+# Detectar contornos cuadrados
+    contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
+    if len(contornos_cuadrados) == 5:
+        lista_contornos.append(contornos_cuadrados)
+        k+=1
+        if k-1==0:continue
+        if f%20==0:
+            contornos_siguiente = contornos_cuadrados
+            if(dado_quieto(contornos_cuadrados,lista_contornos[k-1])):
+            # Recortar regiones de interés de la imagen original
+                recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
 
-    # Recortar regiones de interés de la imagen original
-        recortes = recortar_contornos(frame_color, contornos_cuadrados)
+            # Mostrar el resultado
+                cv2.imshow('Frame Original', redimensionar(frame))
+                cv2.imshow('Frame Original', redimensionar(frame_color))
+                cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
 
-    # Mostrar el resultado
-        cv2.imshow('Frame Original', redimensionar(frame))
-        cv2.imshow('Frame Original', redimensionar(frame_color))
-        cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
+            # Visualizar los recortes utilizando matplotlib
+                for i, recorte in enumerate(recortes):
+                    valor = contarDados(recorte)
+                    plt.subplot(1, len(recortes), i + 1)
+                    plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
+                    plt.title(f'Recorte {i + 1}\nPuntos: {valor} Frame {f-25}')
+                    
 
-    # Visualizar los recortes utilizando matplotlib (opcional)
-        for i, recorte in enumerate(recortes):
-            #valor = contar_puntos_en_circulos_alternativo(recorte)
-            valor = contarDados(recorte)
-            plt.subplot(1, len(recortes), i + 1)
-            plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
-            plt.title(f'Recorte {i + 1}\nPuntos: {valor}')
-            
-
-        plt.show()
-    i +=1
-    # Salir del bucle si se presiona 'q'
+                plt.show()
+    f+=1  
+        # Salir del bucle si se presiona 'q'
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
 # Liberar recursos
 cap.release()
 cv2.destroyAllWindows()
+
+
+
+
+def grabar_video():
+    video_path = './tirada_3.mp4'
+    cap = cv2.VideoCapture(video_path)
+
+    # Leer el primer frame para obtener dimensiones
+    ret, frame = cap.read()
+    if not ret:
+        print("No se pudo abrir el video.")
+        exit()
+    i = 0
+    # Bucle para procesar cada cuadro
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if i == 70:
+        # Aplicar función de procesamiento de color
+            frame_procesado, frame_color = procesar_color(frame)
+
+        # Detectar contornos cuadrados
+            contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
+            if len(contornos_cuadrados) == 5:
+                contornos_5= contornos_cuadrados
+                if contornos_5 != None:
+                    print(dado_quieto(contornos_cuadrados,contornos_5))
+                pass
+
+        # Recortar regiones de interés de la imagen original
+            recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
+
+        # Mostrar el resultado
+            cv2.imshow('Frame Original', redimensionar(frame))
+            cv2.imshow('Frame Original', redimensionar(frame_color))
+            cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
+
+        # Visualizar los recortes utilizando matplotlib (opcional)
+            for i, recorte in enumerate(recortes):
+                #valor = contar_puntos_en_circulos_alternativo(recorte)
+                valor = contarDados(recorte)
+                plt.subplot(1, len(recortes), i + 1)
+                plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
+                plt.title(f'Recorte {i + 1}\nPuntos: {valor}')
+                
+
+            plt.show()
+        i +=1
+        # Salir del bucle si se presiona 'q'
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
+
+    # Liberar recursos
+    cap.release()
+    cv2.destroyAllWindows()
+
+
