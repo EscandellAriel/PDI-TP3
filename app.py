@@ -6,6 +6,12 @@ import matplotlib.pyplot as plt
 ##################################################
 #FUNCIONES########################################
 
+def redimensionar(frame):
+    height, width = frame.shape[:2]
+    frame = cv2.resize(frame, dsize=(int(width/3), int(height/3)))
+    return frame
+
+
 def procesar_color(frame):
     img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img_hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV) # Rangos --> H: 0-179  / S: 0-255  / V: 0-255
@@ -61,52 +67,18 @@ def recortar_contornos(frame, contornos):
         recortes.append(recorte)
     return recortes
 
-
-def contar_puntos_en_circulos_alternativo(recorte):
-    # Convertir a escala de grises
-    gris = cv2.cvtColor(recorte, cv2.COLOR_BGR2GRAY)
-
-    # Aplicar umbral adaptativo
-    _, umbral = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # Encontrar componentes conectadas
-    componentes_conectadas, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Inicializar contador de puntos
-    puntos = 0
-
-    # Iterar sobre las componentes conectadas y filtrar por relación de aspecto
-    for componente in componentes_conectadas:
-        x, y, w, h = cv2.boundingRect(componente)
-        relacion_aspecto = w / float(h)
-
-        # Filtrar por relación de aspecto para considerar solo círculos
-        if 0.8 <= relacion_aspecto <= 1.2:
-            cv2.drawContours(recorte, [componente], -1, (0, 255, 0), 2)
-            centro_x = x + w // 2
-            centro_y = y + h // 2
-            cv2.circle(recorte, (centro_x, centro_y), 2, (0, 0, 255), -1)
-
-            # Incrementar el contador de puntos
-            puntos += 1
-
-    # Mostrar la imagen con los puntos detectados antes del return
-    cv2.imshow('Puntos Detectados', recorte)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    return puntos
-
 def contarDados(recorte):
     dado_recortado_u =  cv2.threshold(recorte, 168, 255, cv2.THRESH_BINARY_INV)[1]
     dado_recortado_c = cv2.Canny(dado_recortado_u, 0, 255, apertureSize=3, L2gradient=True)
     cv2.imshow('Frame thresh', dado_recortado_u)
+    #plt.imshow(dado_recortado_u)
+    #plt.show()
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
     cv2.imshow('Frame canny', dado_recortado_c)
-    dado_recortado_para_components = cv2.dilate(dado_recortado_c, kernel)
-
+    #dado_recortado_para_components = cv2.dilate(dado_recortado_c, kernel)
+    
     # Encuentra componentes conectados
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(dado_recortado_para_components, 8)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(dado_recortado_c, 8)
 
     # Especifica el umbral de área
     area_threshold = (1, 300)  # UMBRAL DE AREA
@@ -138,8 +110,10 @@ def contarDados(recorte):
 
 #################################################
 ###Programa######################################
+
+
 # Ruta del video de entrada
-video_path = './tirada_1.mp4'
+video_path = './tirada_2.mp4'
 cap = cv2.VideoCapture(video_path)
 
 # Leer el primer frame para obtener dimensiones
@@ -164,8 +138,9 @@ while True:
         recortes = recortar_contornos(frame_color, contornos_cuadrados)
 
     # Mostrar el resultado
-        cv2.imshow('Frame Original', frame)
-        cv2.imshow('Frame Procesado', frame_procesado)
+        cv2.imshow('Frame Original', redimensionar(frame))
+        cv2.imshow('Frame Original', redimensionar(frame_color))
+        cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
 
     # Visualizar los recortes utilizando matplotlib (opcional)
         for i, recorte in enumerate(recortes):
