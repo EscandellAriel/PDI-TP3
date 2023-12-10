@@ -73,7 +73,7 @@ def contarDados(recorte):
     dado_recortado_para_components = cv2.dilate(umbral, kernel)
         # Aplicar erosión
     imagen_erosionada = cv2.erode(umbral, kernel, iterations=1)
-    cv2.imshow('Frame erode', imagen_erosionada)
+    #cv2.imshow('Frame erode', imagen_erosionada)
     # Encuentra componentes conectados
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(imagen_erosionada, 4)
 
@@ -86,9 +86,9 @@ def contarDados(recorte):
     filtered_centroids = []
 
     # Mostrar la imagen con los puntos y bounding boxes
-    cv2.imshow('Puntos y Bounding Boxes', recorte)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    #cv2.imshow('Puntos y Bounding Boxes', recorte)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
     for label in range(1, num_labels):  # comienza desde 1 para excluir el fondo (etiqueta 0)
         area = stats[label, cv2.CC_STAT_AREA]
@@ -101,7 +101,7 @@ def contarDados(recorte):
                 filtered_stats.append(stats[label])
                 filtered_centroids.append(centroids[label])
             # Dibujar el bounding box
-                cv2.rectangle(recorte, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                #cv2.rectangle(recorte, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 #cv2.rectangle(umbral, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 #plt.imshow(umbral)
                 #plt.show()
@@ -118,131 +118,62 @@ def dado_quieto(contornos_actual, contornos_anterior):
         if np.array_equal(x, y):continue
         else: return False
     return True
-    # Calcular la diferencia de área entre frames consecutivos
-    diferencia_area = abs(area_dado_actual - area_dado_anterior)
-
-    # Determinar si el dado está quieto (comparando la diferencia de área con el umbral)
-    esta_quieto = diferencia_area < umbral_movimiento
 
 
 
 
-#################################################
-###Programa######################################
-
-# PROGRAMA
 video_path = './tirada_3.mp4'
 cap = cv2.VideoCapture(video_path)
 
 ret, frame = cap.read()
-f = 0
-contornos_anteriores = None
-intervalo_comparacion = 10  # Realizar la comparación cada 5 frames
-
 if not ret:
     print("No se pudo abrir el video.")
     exit()
+
+# Configurar el video de salida
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+video_name = video_path[2:-4]+'_procesado'
+out = cv2.VideoWriter(video_name, fourcc, 20.0, (frame.shape[1], frame.shape[0]))
+
+f = 0
+contornos_anteriores = None
+intervalo_comparacion = 10  # Realizar la comparación cada 10 frames
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
-    frame_procesado, frame_color = procesar_color(frame)
+    frame_procesado, _ = procesar_color(frame)
     contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
 
     if len(contornos_cuadrados) == 5:
-        if f % intervalo_comparacion == 0:  # Realizar la comparación cada 5 frames
+        if f % intervalo_comparacion == 0:
             if contornos_anteriores is not None:
                 area_actual = sum(cv2.contourArea(contorno) for contorno in contornos_cuadrados)
                 area_anterior = sum(cv2.contourArea(contorno) for contorno in contornos_anteriores)
 
-                if abs(area_actual - area_anterior) < 100:  # Ajusta este umbral según tu escenario
+                if abs(area_actual - area_anterior) < 100:
                     recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
-
-                    #cv2.imshow('Frame Original', redimensionar(frame))
-                    #cv2.imshow('Frame Original', redimensionar(frame_color))
-                    #cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
 
                     for i, recorte in enumerate(recortes):
                         valor = contarDados(recorte)
-
-                        # Obtener las coordenadas del contorno cuadrado
                         x, y, w, h = cv2.boundingRect(contornos_cuadrados[i])
 
                         # Dibujar un bounding box en el frame original
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                         # Mostrar el valor en el bounding box
-                        cv2.putText(frame, f'Puntos: {valor}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-                    cv2.imshow('Frame Original', redimensionar(frame))
-                    cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
+                        cv2.putText(frame, f'Puntos: {valor}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
             contornos_anteriores = contornos_cuadrados
 
-    f += 1
+    out.write(frame)  # Escribir el frame al video de salida
+    cv2.imshow('Video de Salida', frame)
 
-    if cv2.waitKey() & 0xFF == ord('q'):
+    if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
 cap.release()
+out.release()
 cv2.destroyAllWindows()
-
-
-
-def grabar_video():
-    video_path = './tirada_1.mp4'
-    cap = cv2.VideoCapture(video_path)
-
-    # Leer el primer frame para obtener dimensiones
-    ret, frame = cap.read()
-    if not ret:
-        print("No se pudo abrir el video.")
-        exit()
-    i = 0
-    # Bucle para procesar cada cuadro
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        if i == 70:
-        # Aplicar función de procesamiento de color
-            frame_procesado, frame_color = procesar_color(frame)
-
-        # Detectar contornos cuadrados
-            contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
-            if len(contornos_cuadrados) == 5:
-                contornos_5= contornos_cuadrados
-                if contornos_5 != None:
-                    print(dado_quieto(contornos_cuadrados,contornos_5))
-                pass
-
-        # Recortar regiones de interés de la imagen original
-            recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
-
-        # Mostrar el resultado
-            cv2.imshow('Frame Original', redimensionar(frame))
-            cv2.imshow('Frame Original', redimensionar(frame_color))
-            cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
-
-        # Visualizar los recortes utilizando matplotlib (opcional)
-            for i, recorte in enumerate(recortes):
-                #valor = contar_puntos_en_circulos_alternativo(recorte)
-                valor = contarDados(recorte)
-                plt.subplot(1, len(recortes), i + 1)
-                plt.imshow(cv2.cvtColor(recorte, cv2.COLOR_BGR2RGB))
-                plt.title(f'Recorte {i + 1}\nPuntos: {valor}')
-                
-
-            plt.show()
-        i +=1
-        # Salir del bucle si se presiona 'q'
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-
-    # Liberar recursos
-    cap.release()
-    cv2.destroyAllWindows()
-
-
