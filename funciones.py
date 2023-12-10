@@ -38,8 +38,7 @@ def procesar_color(frame):
 
 # Función para detectar contornos cuadrados
 def detectar_contornos_cuadrados(frame):
-    # Convertir a escala de grises
-    #gris = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
 
     # Aplicar umbral adaptativo para resaltar contornos
     _, umbral = cv2.threshold(frame, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -48,7 +47,7 @@ def detectar_contornos_cuadrados(frame):
     contornos, _ = cv2.findContours(umbral, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Filtrar contornos cuadrados aproximados
-    #contornos_cuadrados = [cnt for cnt in contornos if es_cuadrado(cnt)]
+    
     contornos_cuadrados = [cnt for cnt in contornos if es_cuadrado(cnt) and cv2.contourArea(cnt) > 50*50]
     return contornos_cuadrados
 
@@ -88,7 +87,7 @@ def recortarxcontorno(frame, contornos):
 def contarDados(recorte):
     _, umbral = cv2.threshold(recorte, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
-    dado_recortado_para_components = cv2.dilate(umbral, kernel)
+    
     # Aplicar erosión
     imagen_erosionada = cv2.erode(umbral, kernel, iterations=1)
     #cv2.imshow('Frame erode', redimensionar(imagen_erosionada))
@@ -132,7 +131,7 @@ def contarDados(recorte):
 
 # Función para determinar si un dado está quieto de un frame a otro
 def dado_quieto(contornos_actual, contornos_anterior):
-    # Convertir a escala de grises
+    
     for x,y in zip(contornos_actual,contornos_anterior):
         if np.array_equal(x, y):continue
         else: return False
@@ -147,7 +146,7 @@ def programa_dados(path):
     ret, frame = cap.read()
     f = 0
     contornos_anteriores = None
-    intervalo_comparacion = 7  # Realizar la comparación cada 5 frames
+    intervalo_comparacion = 7  # Realizar la comparación cada 7 frames
 
     if not ret:
         print("No se pudo abrir el video.")
@@ -162,12 +161,12 @@ def programa_dados(path):
         contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
 
         if len(contornos_cuadrados) == 5:
-            if f % intervalo_comparacion == 0:  # Realizar la comparación cada 5 frames
+            if f % intervalo_comparacion == 0:  
                 if contornos_anteriores is not None:
                     area_actual = sum(cv2.contourArea(contorno) for contorno in contornos_cuadrados)
                     area_anterior = sum(cv2.contourArea(contorno) for contorno in contornos_anteriores)
 
-                    if abs(area_actual - area_anterior) < 100:  # Ajusta este umbral según tu escenario
+                    if abs(area_actual - area_anterior) < 100:  
                         #recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
                         recortes = recortarxcontorno(frame_procesado, contornos_cuadrados)
                         #cv2.imshow('Frame Original', redimensionar(frame))
@@ -217,7 +216,7 @@ def grabar_video(path):
 
     f = 0
     contornos_anteriores = None
-    intervalo_comparacion = 7  # Realizar la comparación cada 10 frames
+    intervalo_comparacion = 7  # Realizar la comparación cada 7 frames
 
     while True:
         ret, frame = cap.read()
@@ -248,7 +247,7 @@ def grabar_video(path):
 
                 contornos_anteriores = contornos_cuadrados
 
-        out.write(frame)  # Escribir el frame al video de salida
+        out.write(frame)  
         #cv2.imshow('Video de Salida', frame)
 
         # if cv2.waitKey(25) & 0xFF == ord('q'):
