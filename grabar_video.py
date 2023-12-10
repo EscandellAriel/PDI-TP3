@@ -126,13 +126,75 @@ video_path = './tirada_3.mp4'
 cap = cv2.VideoCapture(video_path)
 
 ret, frame = cap.read()
+f = 0
+contornos_anteriores = None
+intervalo_comparacion = 5  # Realizar la comparación cada 5 frames
+
+# Configurar el video de salida
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+video_name = video_path[2:-4] + '_procesado.mp4'
+out = cv2.VideoWriter(video_name, fourcc, 20.0, (frame.shape[1], frame.shape[0]))
+
+if not ret:
+    print("No se pudo abrir el video.")
+    exit()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    frame_procesado, frame_color = procesar_color(frame)
+    contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
+
+    if len(contornos_cuadrados) > 0:
+        if f % intervalo_comparacion == 0:
+            if contornos_anteriores is not None and len(contornos_anteriores) > 0 and len(contornos_cuadrados) == len(
+                    contornos_anteriores):
+                for i, contorno_actual in enumerate(contornos_cuadrados):
+                    # Obtener las coordenadas del contorno cuadrado actual
+                    x_actual, y_actual, w_actual, h_actual = cv2.boundingRect(contorno_actual)
+
+                    # Buscar el contorno correspondiente en el frame anterior
+                    if i < len(contornos_anteriores):
+                        contorno_anterior = contornos_anteriores[i]
+                        x_anterior, y_anterior, w_anterior, h_anterior = cv2.boundingRect(contorno_anterior)
+
+                        # Comparar la posición actual con la posición anterior
+                        if abs(x_actual - x_anterior) < 10 and abs(y_actual - y_anterior) < 10:
+                            # Está quieto, aplicar bounding box azul
+                            cv2.rectangle(frame_color, (x_actual, y_actual), (x_actual + w_actual, y_actual + h_actual),
+                                          (255, 0, 0), 2)
+                            valor = contarDados(frame_procesado[y_actual:y_actual + h_actual, x_actual:x_actual + w_actual])
+                            cv2.putText(frame_color, f'Puntos: {valor}', (x_actual, y_actual - 10),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+                # Escribir el frame procesado en el video
+                out.write(frame_color)
+
+            contornos_anteriores = contornos_cuadrados
+
+    f += 1
+
+    if cv2.waitKey(25) & 0xFF == ord('q'):
+        break
+
+cap.release()
+out.release()
+cv2.destroyAllWindows()
+
+""" 
+video_path = './tirada_4.mp4'
+cap = cv2.VideoCapture(video_path)
+
+ret, frame = cap.read()
 if not ret:
     print("No se pudo abrir el video.")
     exit()
 
 # Configurar el video de salida
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-video_name = video_path[2:-4]+'_procesado'
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+video_name = video_path[2:-4]+'_procesado.mp4'
 out = cv2.VideoWriter(video_name, fourcc, 20.0, (frame.shape[1], frame.shape[0]))
 
 f = 0
@@ -176,4 +238,4 @@ while True:
 
 cap.release()
 out.release()
-cv2.destroyAllWindows()
+cv2.destroyAllWindows() """
