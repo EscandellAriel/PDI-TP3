@@ -184,9 +184,9 @@ def programa_dados(path):
 
                             # Mostrar el valor en el bounding box
                             cv2.putText(frame, f'Puntos: {valor}', (x, y + h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                        cv2.imshow('Dados quietos con Lectura de cara', redimensionar(frame))
+                        #cv2.imshow('Dados quietos con Lectura de cara', redimensionar(frame))
                         cv2.imwrite(f'./{path[:-4]}.jpg', redimensionar(frame))
-                    print(f'{path} procesado con éxito')
+            #print(f'{path} procesado con éxito')
                         #cv2.imshow('Frame Procesado', redimensionar(frame_procesado))
 
                 contornos_anteriores = contornos_cuadrados
