@@ -119,71 +119,22 @@ def dado_quieto(contornos_actual, contornos_anterior):
         else: return False
     return True
 
+def recortarxcontorno(frame, contornos):
+    mask = np.zeros_like(frame)
+    recortes = []
+    for contorno in contornos:
+        mask = np.zeros_like(frame)
+        # Dibuja el contorno en la máscara
+        cv2.drawContours(mask, [contorno], -1, 255, thickness=cv2.FILLED)
+        # Aplica la máscara a la imagen original
+        dado_recortado = cv2.bitwise_and(frame,frame, mask=mask)
+        #cv2.imshow('Solo contorno',redimensionar(dado_recortado))
+        recortes.append(dado_recortado)
+    return recortes
 
+#############################################################
+####Programa#################################################
 
-
-video_path = './tirada_3.mp4'
-cap = cv2.VideoCapture(video_path)
-
-ret, frame = cap.read()
-f = 0
-contornos_anteriores = None
-intervalo_comparacion = 5  # Realizar la comparación cada 5 frames
-
-# Configurar el video de salida
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-video_name = video_path[2:-4] + '_procesado.mp4'
-out = cv2.VideoWriter(video_name, fourcc, 20.0, (frame.shape[1], frame.shape[0]))
-
-if not ret:
-    print("No se pudo abrir el video.")
-    exit()
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    frame_procesado, frame_color = procesar_color(frame)
-    contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
-
-    if len(contornos_cuadrados) > 0:
-        if f % intervalo_comparacion == 0:
-            if contornos_anteriores is not None and len(contornos_anteriores) > 0 and len(contornos_cuadrados) == len(
-                    contornos_anteriores):
-                for i, contorno_actual in enumerate(contornos_cuadrados):
-                    # Obtener las coordenadas del contorno cuadrado actual
-                    x_actual, y_actual, w_actual, h_actual = cv2.boundingRect(contorno_actual)
-
-                    # Buscar el contorno correspondiente en el frame anterior
-                    if i < len(contornos_anteriores):
-                        contorno_anterior = contornos_anteriores[i]
-                        x_anterior, y_anterior, w_anterior, h_anterior = cv2.boundingRect(contorno_anterior)
-
-                        # Comparar la posición actual con la posición anterior
-                        if abs(x_actual - x_anterior) < 10 and abs(y_actual - y_anterior) < 10:
-                            # Está quieto, aplicar bounding box azul
-                            cv2.rectangle(frame_color, (x_actual, y_actual), (x_actual + w_actual, y_actual + h_actual),
-                                          (255, 0, 0), 2)
-                            valor = contarDados(frame_procesado[y_actual:y_actual + h_actual, x_actual:x_actual + w_actual])
-                            cv2.putText(frame_color, f'Puntos: {valor}', (x_actual, y_actual - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-                # Escribir el frame procesado en el video
-                out.write(frame_color)
-
-            contornos_anteriores = contornos_cuadrados
-
-    f += 1
-
-    if cv2.waitKey(25) & 0xFF == ord('q'):
-        break
-
-cap.release()
-out.release()
-cv2.destroyAllWindows()
-
-""" 
 video_path = './tirada_4.mp4'
 cap = cv2.VideoCapture(video_path)
 
@@ -199,7 +150,7 @@ out = cv2.VideoWriter(video_name, fourcc, 20.0, (frame.shape[1], frame.shape[0])
 
 f = 0
 contornos_anteriores = None
-intervalo_comparacion = 10  # Realizar la comparación cada 10 frames
+intervalo_comparacion = 1  # Realizar la comparación cada 10 frames
 
 while True:
     ret, frame = cap.read()
@@ -209,14 +160,14 @@ while True:
     frame_procesado, _ = procesar_color(frame)
     contornos_cuadrados = detectar_contornos_cuadrados(frame_procesado)
 
-    if len(contornos_cuadrados) == 5:
+    if len(contornos_cuadrados) > 0:
         if f % intervalo_comparacion == 0:
             if contornos_anteriores is not None:
                 area_actual = sum(cv2.contourArea(contorno) for contorno in contornos_cuadrados)
                 area_anterior = sum(cv2.contourArea(contorno) for contorno in contornos_anteriores)
 
                 if abs(area_actual - area_anterior) < 100:
-                    recortes = recortar_contornos(frame_procesado, contornos_cuadrados)
+                    recortes = recortarxcontorno(frame_procesado, contornos_cuadrados)
 
                     for i, recorte in enumerate(recortes):
                         valor = contarDados(recorte)
@@ -226,16 +177,16 @@ while True:
                         cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                         # Mostrar el valor en el bounding box
-                        cv2.putText(frame, f'Puntos: {valor}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                        cv2.putText(frame, f'Puntos: {valor}', (x, y + h + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
             contornos_anteriores = contornos_cuadrados
 
     out.write(frame)  # Escribir el frame al video de salida
-    cv2.imshow('Video de Salida', frame)
+    #cv2.imshow('Video de Salida', frame)
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
 
 cap.release()
 out.release()
-cv2.destroyAllWindows() """
+cv2.destroyAllWindows() 
