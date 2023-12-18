@@ -57,14 +57,7 @@ def es_cuadrado(contorno):
     approx = cv2.approxPolyDP(contorno, 0.05 * perimetro, True)
     return len(approx) == 4
 
-# Función para recortar regiones de interés de la imagen original
-def recortar_contornos(frame, contornos):
-    recortes = []
-    for contorno in contornos:
-        x, y, w, h = cv2.boundingRect(contorno)
-        recorte = frame[y:y + h, x:x + w]
-        recortes.append(recorte)
-    return recortes
+
 
 
 def recortarxcontorno(frame, contornos):
